@@ -13,9 +13,10 @@ import { execFile } from 'node:child_process';
 // Long-polls Telegram so the user can reply to the coach from the iPhone.
 // Only messages from TELEGRAM_CHAT_ID are accepted.
 export async function listen() {
-  const token = secret('TELEGRAM_BOT_TOKEN');
+  // Wait until pairing is done, so this poller doesn't swallow the pairing message.
+  while (!secret('TELEGRAM_BOT_TOKEN') || !secret('TELEGRAM_CHAT_ID')) await new Promise((r) => setTimeout(r, 30_000));
   const chat = String(secret('TELEGRAM_CHAT_ID'));
-  if (!token) throw new Error('TELEGRAM_BOT_TOKEN missing');
+  const token = secret('TELEGRAM_BOT_TOKEN');
   const api = (m, body) =>
     fetch(`https://api.telegram.org/bot${token}/${m}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
   let offset = 0;
