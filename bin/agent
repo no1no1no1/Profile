@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# agent new <repo-dir> <task...>   -> worktree + tmux window + claude session (WIP-limited)
+# agent ls                         -> list running agents
+set -euo pipefail
+COACH="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)/coach/index.js"
+case "${1:-}" in
+  new)
+    repo="$(cd "$2" && pwd)"; shift 2; task="$*"
+    slug="$(echo "$task" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | cut -c1-40 | sed 's/-$//')"
+    node "$COACH" wip add "$slug" || { echo "WIP limit hit. Finish or /park something first."; exit 1; }
+    wt="$HOME/work/$(basename "$repo")-$slug"
+    git -C "$repo" worktree add -b "agent/$slug" "$wt" 2>/dev/null || true
+    tmux has-session -t agents 2>/dev/null || tmux new-session -d -s agents
+    tmux new-window -t agents -n "$slug" -c "$wt" "claude \"$task\"; bash"
+    echo "Started '$slug' in $wt (tmux: agents:$slug)";;
+  ls) tmux list-windows -t agents 2>/dev/null || echo "no agents"; node "$COACH" wip ls;;
+  *) echo "usage: agent new <repo> <task> | agent ls"; exit 1;;
+esac

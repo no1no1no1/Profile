@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)",
+      "Bash(git commit:*)", "Bash(git checkout:*)", "Bash(git worktree:*)", "Bash(git push -u origin:*)",
+      "Bash(npm test:*)", "Bash(npm run:*)", "Bash(pnpm:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(rg:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)", "Bash(gh pr merge:*)", "Bash(vercel --prod:*)", "Bash(npm publish:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "~/bin/coach-notify agent-done \"$PWD\"" } ] }
+    ],
+    "Notification": [
+      { "hooks": [ { "type": "command", "command": "~/bin/coach-notify agent-needs-you \"$PWD\"" } ] }
+    ]
+  }
+}

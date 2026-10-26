@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Called from Claude Code hooks; never blocks or fails the session.
+node "$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)/coach/index.js" notify "$@" >/dev/null 2>&1 &
+exit 0
