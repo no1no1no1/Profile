@@ -23,7 +23,7 @@ export function claudeOn(machine, { cwd = '~', prompt, sessionId, timeoutMs = 15
     child.on('error', reject);
     child.on('close', (code) => {
       clearTimeout(timer);
-      if (code === 255 && host) return reject(new Error(`${machine} is offline or asleep`));
+      if (code === 255 && host) return reject(new OfflineError(`${machine} is offline or asleep`));
       try {
         const r = JSON.parse(out);
         resolve({ text: r.result ?? '(no output)', sessionId: r.session_id });
@@ -49,3 +49,16 @@ export function tmuxOn(machine, tmuxArgs) {
     child.on('error', (e) => resolve(String(e)));
   });
 }
+
+// Quick reachability check (Tailscale SSH). The local machine is always online.
+export function isOnline(machine) {
+  const host = settings.machines[machine];
+  if (!host) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const child = spawn('ssh', ['-o', 'ConnectTimeout=5', '-o', 'BatchMode=yes', host, 'true']);
+    child.on('close', (code) => resolve(code === 0));
+    child.on('error', () => resolve(false));
+  });
+}
+
+export class OfflineError extends Error {}

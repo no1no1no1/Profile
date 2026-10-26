@@ -9,6 +9,8 @@ How I work: many Claude Code agents in parallel, steered from my phone, with a p
   cockpit                       ├─ tmux "agents": 1 worktree + 1 claude per task (WIP ≤ 3)
                                 ├─ coach daemon: two-way Telegram, scheduled jobs (launchd)
                                 └─ Remote Control: drive any session from the phone
+ Brain = the mini. Claude for connector-heavy jobs, Ollama (local) for frequent/cheap ones and as fallback.
+ MacBook = optional worker; messages for it queue while it's asleep.
  Sources: Gmail · Calendar · GitHub · Novia KPIs (Apps Script) · Fitbit · Claude transcripts · X via Grok
 ```
 
@@ -16,7 +18,8 @@ How I work: many Claude Code agents in parallel, steered from my phone, with a p
 | When | What |
 |---|---|
 | 07:30 | Morning brief: sleep, meetings, KPIs, dues, training slot, the **ONE thing** |
-| every 5 min | Meeting in ~10 min → prep note (bypasses quiet hours) |
+| hourly | Caches your calendar (Claude) |
+| every 5 min | Meeting in ~10 min → prep note (no AI call until one is close; bypasses quiet hours) |
 | hourly | Captures promises from sent mail and nudges when they're due |
 | 12:30 | X digest via Grok (optional) |
 | 13:00, 16:00 | Drift check: declared focus vs. what git/tmux show |
@@ -37,8 +40,13 @@ Quiet hours are 23:30–07:00. Guardrails: email is drafts only, no merges/deplo
 | `/agents` | Running agents on both machines |
 | `/peek mini <agent>` · `/tell mini <agent> <msg>` | See an agent's screen · type into it |
 | `/spawn ~/work/novia-app <task>` | Start a new agent on the mini (WIP-limited) |
+| `/local <msg>` | Ask Ollama on the mini: free, private, instant |
+| `/queue` · `/queue clear` | Messages waiting for the MacBook |
 
-Claude runs headless with `acceptEdits`: it can edit files, and shell commands are limited to the allowlist in `claude/settings.json`. If the MacBook is asleep you get "mb is offline".
+Claude runs headless with `acceptEdits`: it can edit files, and shell commands are limited to the allowlist in `claude/settings.json`. If the MacBook is off, the message is queued and runs automatically within ~2 min of it waking.
+
+## Which brain does what
+`coach/lib/config.js` → `tiers`. Claude: morning brief, calendar cache, meeting prep, commitment capture, weekly review (these need Gmail/Calendar/GitHub). Ollama: drift checks and Telegram chit-chat. If Claude fails, the job reruns on Ollama and is tagged _(local brain)_. The model is `qwen3:14b` on 24GB+ Macs, otherwise `qwen3:8b`; override it with `OLLAMA_MODEL`.
 
 ## Setup
 1. **Mac mini:** `git clone` this repo to `~/Profile`, run `setup/mini.sh`, then `coach/bin/secrets.sh`.

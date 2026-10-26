@@ -5,7 +5,9 @@ import { notify } from './notify.js';
 import { think } from './brain.js';
 import { load, update, record } from './state.js';
 import { settings } from './config.js';
-import { claudeOn, tmuxOn } from './remote.js';
+import { claudeOn, tmuxOn, isOnline, OfflineError } from './remote.js';
+import { enqueue } from './queue.js';
+import { ollama } from './brain.js';
 import { execFile } from 'node:child_process';
 
 // Long-polls Telegram so the user can reply to the coach from the iPhone.
@@ -66,7 +68,9 @@ const HELP = `*Talk to your machines*
 /agents - running agents on both machines
 /peek <machine> <agent> - last screen of an agent
 /tell <machine> <agent> <msg> - type into a running agent
-/spawn <repo> <task> - start a new agent on the mini`;
+/spawn <repo> <task> - start a new agent on the mini
+/local <msg> - ask Ollama on the mini (free, private)
+/queue [clear] - messages waiting for the MacBook to wake`;
 
 const machineNames = () => Object.keys(settings.machines);
 
@@ -125,7 +129,8 @@ async function onCommand(name, arg) {
       await notify('🆕 Fresh conversation.', { urgent: true });
       return true;
     case 'agents': {
-      const lists = await Promise.all(machineNames().map(async (m) => `*${m}*\n${(await tmuxOn(m, ['list-windows', '-t', 'agents', '-F', '#W'])) || 'none'}`));
+      const lists = await Promise.all(machineNames().map(async (m) =>
+        (await isOnline(m)) ? `*${m}*\n${(await tmuxOn(m, ['list-windows', '-t', 'agents', '-F', '#W'])) || 'none'}` : `*${m}*: offline`));
       await notify(lists.join('\n\n'), { urgent: true });
       return true;
     }
@@ -142,6 +147,16 @@ async function onCommand(name, arg) {
       await tmuxOn(m, ['send-keys', '-t', `agents:${w}`, '-l', msg]);
       await tmuxOn(m, ['send-keys', '-t', `agents:${w}`, 'Enter']);
       await notify(`⌨️ Sent to ${m}:${w}. /peek ${m} ${w} to see the reply.`, { urgent: true });
+      return true;
+    }
+    case 'local': {
+      ollama(arg).then((t) => notify(`[local] ${t}`, { urgent: true, plain: true }), (e) => notify(`⚠️ ollama: ${e.message}`, { urgent: true }));
+      return true;
+    }
+    case 'queue': {
+      if (arg === 'clear') update((s) => { s.queue = []; });
+      const q = load().queue ?? [];
+      await notify(q.length ? q.map((i) => `• ${i.machine}: ${i.prompt.slice(0, 80)}`).join('\n') : 'Queue empty.', { urgent: true, plain: true });
       return true;
     }
     case 'spawn': {
@@ -164,5 +179,9 @@ function talk(chat, prompt, keep) {
       if (keep) update((s) => { if (s.chat?.machine === chat.machine) s.chat.sessionId = sessionId; });
       return notify(`[${chat.machine}] ${text}`, { urgent: true, plain: true });
     })
-    .catch((e) => notify(`⚠️ ${chat.machine}: ${e.message}`, { urgent: true, plain: true }));
+    .catch((e) => {
+      if (!(e instanceof OfflineError)) return notify(`⚠️ ${chat.machine}: ${e.message}`, { urgent: true, plain: true });
+      const n = enqueue({ machine: chat.machine, cwd: chat.cwd, prompt });
+      return notify(`📥 ${chat.machine} is off. Queued (#${n}); I'll run it when it wakes.`, { urgent: true });
+    });
 }

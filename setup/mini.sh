@@ -8,6 +8,13 @@ brew install git gh node tmux mosh jq
 brew install --cask tailscale || true
 command -v claude >/dev/null || npm install -g @anthropic-ai/claude-code
 
+# Local brain: Ollama on the mini (free, private, used for frequent coach jobs)
+brew install ollama
+brew services start ollama
+MEM_GB=$(( $(sysctl -n hw.memsize) / 1073741824 ))
+MODEL=$([ "$MEM_GB" -ge 24 ] && echo qwen3:14b || echo qwen3:8b)
+ollama list | grep -q "^$MODEL" || ollama pull "$MODEL"
+
 # Never sleep, restart after power loss
 sudo pmset -a sleep 0 disksleep 0 displaysleep 10 autorestart 1 womp 1
 sudo systemsetup -setremotelogin on 2>/dev/null || true
