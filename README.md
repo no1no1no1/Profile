@@ -27,13 +27,26 @@ How I work: many Claude Code agents in parallel, steered from my phone, with a p
 
 Quiet hours are 23:30–07:00. Guardrails: email is drafts only, no merges/deploys, no spending.
 
+## Talk to your Macs from Telegram
+| Message | What happens |
+|---|---|
+| `/mini ~/work/novia-app` | Switch to chatting with Claude on the Mac mini in that folder; it remembers the conversation |
+| `/mb ~/code/site` | The same, on the MacBook (over Tailscale SSH) |
+| `mb: what's failing in the tests?` | One-off message without switching |
+| `/new` · `/coach` | Fresh conversation · back to the coach |
+| `/agents` | Running agents on both machines |
+| `/peek mini <agent>` · `/tell mini <agent> <msg>` | See an agent's screen · type into it |
+| `/spawn ~/work/novia-app <task>` | Start a new agent on the mini (WIP-limited) |
+
+Claude runs headless with `acceptEdits`: it can edit files, and shell commands are limited to the allowlist in `claude/settings.json`. If the MacBook is asleep you get "mb is offline".
+
 ## Setup
 1. **Mac mini:** `git clone` this repo to `~/Profile`, run `setup/mini.sh`, then `coach/bin/secrets.sh`.
 2. **Telegram:** message @BotFather → `/newbot` → token. Send the bot a message, then read `chat.id` from `https://api.telegram.org/bot<token>/getUpdates`.
 3. **Fitbit:** create an app at dev.fitbit.com (personal, scopes: sleep, activity, heartrate) and store the access token.
 4. **Novia KPIs:** make the Apps Script web app return JSON. If it needs auth, have it check a `?key=` param (`NOVIA_METRICS_KEY`).
 5. **Claude:** run `claude` once on the mini and log in with the claude.ai account that has the Gmail/Calendar/GitHub connectors. Turn on Remote Control.
-6. **MacBook:** `setup/macbook.sh`, then `mini` attaches to the agent server.
+6. **MacBook:** `setup/macbook.sh` (turns on Remote Login). Name it `macbook` in Tailscale, then run `ssh-copy-id macbook` on the mini. After that, `mini` attaches to the agent server.
 7. **iPhone:** install Tailscale, Telegram and the Claude app, with notifications on.
 
 ## Daily use

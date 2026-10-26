@@ -4,7 +4,7 @@ import { record } from './state.js';
 
 // Sends a message to the user's Telegram (shows as an iPhone push).
 // urgent=true bypasses the sleep window (e.g. a meeting in 10 minutes).
-export async function notify(text, { urgent = false, buttons } = {}) {
+export async function notify(text, { urgent = false, buttons, plain = false } = {}) {
   if (!urgent && isQuiet()) {
     record('suppressed', { text });
     return false;
@@ -15,7 +15,13 @@ export async function notify(text, { urgent = false, buttons } = {}) {
     console.log(`[notify] ${text}`);
     return false;
   }
-  const body = { chat_id: chat, text, parse_mode: 'Markdown', disable_web_page_preview: true };
+  // Telegram caps messages at 4096 chars; send long output in chunks.
+  if (text.length > 4000) {
+    for (let i = 0; i < text.length; i += 4000) await notify(text.slice(i, i + 4000), { urgent: true, plain });
+    return true;
+  }
+  const body = { chat_id: chat, text, disable_web_page_preview: true };
+  if (!plain) body.parse_mode = 'Markdown';
   if (buttons) body.reply_markup = { inline_keyboard: [buttons.map(([t, d]) => ({ text: t, callback_data: d }))] };
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',

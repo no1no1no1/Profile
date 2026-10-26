@@ -4,6 +4,9 @@ import { secret, REPO } from './config.js';
 import { notify } from './notify.js';
 import { think } from './brain.js';
 import { load, update, record } from './state.js';
+import { settings } from './config.js';
+import { claudeOn, tmuxOn } from './remote.js';
+import { execFile } from 'node:child_process';
 
 // Long-polls Telegram so the user can reply to the coach from the iPhone.
 // Only messages from TELEGRAM_CHAT_ID are accepted.
@@ -54,9 +57,29 @@ function applyRules(week) {
   return notify('✅ Rules updated. Commit the repo on the mini to keep history.');
 }
 
+const HELP = `*Talk to your machines*
+/mini [dir] - chat with Claude on the Mac mini (e.g. /mini ~/work/novia-app)
+/mb [dir] - chat with Claude on the MacBook
+/new - fresh conversation on the current machine
+/coach - back to the coach
+\`mb: <msg>\` or \`mini: <msg>\` - one-off message without switching
+/agents - running agents on both machines
+/peek <machine> <agent> - last screen of an agent
+/tell <machine> <agent> <msg> - type into a running agent
+/spawn <repo> <task> - start a new agent on the mini`;
+
+const machineNames = () => Object.keys(settings.machines);
+
 async function onText(text) {
   const s = load();
   record('reply', { text: text.slice(0, 500) });
+  const cmd = text.match(/^\/(\w+)\s*([\s\S]*)$/);
+  if (cmd && (await onCommand(cmd[1].toLowerCase(), cmd[2].trim()))) return;
+  const oneOff = text.match(/^(\w+):\s*([\s\S]+)$/);
+  if (oneOff && machineNames().includes(oneOff[1].toLowerCase())) {
+    return talk({ machine: oneOff[1].toLowerCase(), cwd: '~' }, oneOff[2], false);
+  }
+  if (s.chat) return talk(s.chat, text, true);
   if (s.awaiting === 'focus' || /^focus[: ]/i.test(text)) {
     const focus = text.replace(/^focus[: ]\s*/i, '');
     update((st) => { st.focus = focus; st.awaiting = null; });
@@ -81,4 +104,65 @@ function applyActions(a) {
     if (a.trained === false) s.streaks.workout = 0;
     if (a.shutdown) s.streaks.shutdown += 1;
   });
+}
+
+async function onCommand(name, arg) {
+  if (machineNames().includes(name)) {
+    update((s) => { s.chat = { machine: name, cwd: arg || '~', sessionId: null }; });
+    await notify(`💬 Now talking to Claude on *${name}* in \`${arg || '~'}\`. /coach to switch back.`, { urgent: true });
+      return true;
+  }
+  switch (name) {
+    case 'help': case 'start':
+      await notify(HELP, { urgent: true });
+      return true;
+    case 'coach':
+      update((s) => { s.chat = null; });
+      await notify('🧠 Back to the coach.', { urgent: true });
+      return true;
+    case 'new':
+      update((s) => { if (s.chat) s.chat.sessionId = null; });
+      await notify('🆕 Fresh conversation.', { urgent: true });
+      return true;
+    case 'agents': {
+      const lists = await Promise.all(machineNames().map(async (m) => `*${m}*\n${(await tmuxOn(m, ['list-windows', '-t', 'agents', '-F', '#W'])) || 'none'}`));
+      await notify(lists.join('\n\n'), { urgent: true });
+      return true;
+    }
+    case 'peek': {
+      const [m, w] = arg.split(/\s+/);
+      const screen = await tmuxOn(m, ['capture-pane', '-p', '-t', `agents:${w}`, '-S', '-40']);
+      await notify(screen.slice(-3500) || '(empty)', { urgent: true, plain: true });
+      return true;
+    }
+    case 'tell': {
+      const [, m, w, msg] = arg.match(/^(\S+)\s+(\S+)\s+([\s\S]+)$/) ?? [];
+      if (!msg) await notify('usage: /tell <machine> <agent> <msg>', { urgent: true });
+      return true;
+      await tmuxOn(m, ['send-keys', '-t', `agents:${w}`, '-l', msg]);
+      await tmuxOn(m, ['send-keys', '-t', `agents:${w}`, 'Enter']);
+      await notify(`⌨️ Sent to ${m}:${w}. /peek ${m} ${w} to see the reply.`, { urgent: true });
+      return true;
+    }
+    case 'spawn': {
+      const [, repo, task] = arg.match(/^(\S+)\s+([\s\S]+)$/) ?? [];
+      if (!task) await notify('usage: /spawn <repo dir> <task>', { urgent: true });
+      return true;
+      execFile('zsh', ['-lc', `~/bin/agent new ${repo} ${JSON.stringify(task)}`], (e, out, err) =>
+        notify((out || err || String(e)).trim().slice(0, 1000), { urgent: true, plain: true }));
+      return true;
+    }
+  }
+  return false;
+}
+
+// Runs in the background so the Telegram loop keeps answering while Claude works.
+function talk(chat, prompt, keep) {
+  notify(`⏳ ${chat.machine} is on it…`, { urgent: true });
+  claudeOn(chat.machine, { cwd: chat.cwd, prompt, sessionId: keep ? chat.sessionId : null })
+    .then(({ text, sessionId }) => {
+      if (keep) update((s) => { if (s.chat?.machine === chat.machine) s.chat.sessionId = sessionId; });
+      return notify(`[${chat.machine}] ${text}`, { urgent: true, plain: true });
+    })
+    .catch((e) => notify(`⚠️ ${chat.machine}: ${e.message}`, { urgent: true, plain: true }));
 }

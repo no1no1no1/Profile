@@ -13,6 +13,8 @@ sudo pmset -a sleep 0 disksleep 0 displaysleep 10 autorestart 1 womp 1
 sudo systemsetup -setremotelogin on 2>/dev/null || true
 
 mkdir -p ~/work ~/.coach ~/.claude ~/bin
+# Key the coach uses to reach the MacBook over Tailscale (Telegram /mb)
+[ -f ~/.ssh/id_ed25519 ] || ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
 ln -sf "$REPO/bin/agent" ~/bin/agent
 ln -sf "$REPO/bin/coach-notify" ~/bin/coach-notify
 "$REPO/setup/link-claude.sh"
@@ -24,4 +26,4 @@ for p in "$REPO"/coach/launchd/*.plist; do
   launchctl unload "$dest" 2>/dev/null || true
   launchctl load "$dest"
 done
-echo "Done. Next: open Tailscale, then run: coach/bin/secrets.sh"
+echo "Done. Next: open Tailscale, run coach/bin/secrets.sh, then: ssh-copy-id macbook"

@@ -9,6 +9,8 @@ export const settings = {
   wipLimit: 3,
   tz: 'Europe/Rome',
   sleep: { start: '23:30', end: '07:00' },
+  // Machines you can talk to from Telegram. null = local (the mini runs the daemon); else a Tailscale SSH host.
+  machines: { mini: null, mb: 'macbook' },
   metricsUrl: 'https://script.google.com/a/macros/novia.solutions/s/AKfycbz1UM_Vc6q2-7g-DUkOx1sndXrrt96FWrvx7YwV5KcYGOZ6S9WMN9MYVZx1I0Zm4oCs/exec',
 };
 
