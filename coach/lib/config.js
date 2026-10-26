@@ -7,6 +7,7 @@ export const REPO = path.resolve(new URL('../..', import.meta.url).pathname);
 
 export const settings = {
   wipLimit: 3,
+  telegramUser: 'noviasolutions',
   tz: 'Europe/Rome',
   sleep: { start: '23:30', end: '07:00' },
   // Machines you can talk to from Telegram. null = local (the mini runs the daemon); else a Tailscale SSH host.
