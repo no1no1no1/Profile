@@ -10,7 +10,7 @@ export default async function body() {
   const streakStart = busy ? (s.busySince ?? now) : null;
   update((st) => (st.busySince = streakStart));
   if (streakStart && now - streakStart > 90 * 60_000) {
-    await notify('🧍 90 min straight. Stand up: water + 20 pushups + 2 min outside. Agents keep running.');
+    await notify('💪 *Move break*\n90 min straight. Agents keep running; you need blood flow.\n👉 Water + 20 pushups + 2 min outside.');
     update((st) => (st.busySince = now));
   }
 }

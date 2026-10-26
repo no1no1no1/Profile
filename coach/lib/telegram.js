@@ -9,6 +9,7 @@ import { claudeOn, tmuxOn, isOnline, OfflineError } from './remote.js';
 import { enqueue } from './queue.js';
 import { ollama } from './brain.js';
 import { execFile } from 'node:child_process';
+import { today } from './time.js';
 
 // Long-polls Telegram so the user can reply to the coach from the iPhone.
 // Only messages from TELEGRAM_CHAT_ID are accepted.
@@ -46,7 +47,23 @@ async function onButton(data) {
     update((s) => { s.awaiting = 'focus'; });
     return notify('What is the ONE thing? Reply here.');
   }
-  if (data === 'focus:ok') return notify('🔒 Locked. Go.');
+  if (data === 'focus:ok') {
+    update((s) => { s.lockedOn = today(); });
+    return notify('🔒 *Locked.* Go.\n👉 Phone down, first 5 minutes now.');
+  }
+  if (data === 'checkin:green') return notify('🟢 *On it.* Good. Keep the streak.\n👉 Next check 13:00.');
+  if (data === 'checkin:yellow') return notify('🟡 *Stuck*\n👉 Reply with the blocker in one line. I\'ll cut it to a 5-min step.');
+  if (data === 'checkin:red') {
+    return notify('🔴 *Not started*\nThe hardest part is the first 5 minutes.\n👉 Open it and do the smallest ugly version now. Reply when it\'s moving.');
+  }
+  if (data === 'score:yes') {
+    const n = update((s) => (s.streaks.shipped = (s.streaks.shipped ?? 0) + 1));
+    return notify(`✅ *Shipped.* 🔥 Shipped streak: ${n} day${n === 1 ? '' : 's'}\n👉 Close the laptop by 21:00 and win the shutdown.`);
+  }
+  if (data === 'score:no') {
+    update((s) => { s.streaks.shipped = 0; });
+    return notify('❌ *Not yet*\n👉 What\'s left? One line. I\'ll size it for tonight or first thing tomorrow.');
+  }
   if (data === 'drift:back') return notify('👊 Back to it.');
   if (data.startsWith('rules:apply:')) return applyRules(data.split(':')[2]);
 }
@@ -87,7 +104,7 @@ async function onText(text) {
   if (s.chat) return talk(s.chat, text, true);
   if (s.awaiting === 'focus' || /^focus[: ]/i.test(text)) {
     const focus = text.replace(/^focus[: ]\s*/i, '');
-    update((st) => { st.focus = focus; st.awaiting = null; });
+    update((st) => { st.focus = focus; st.awaiting = null; st.lockedOn = today(); });
     return notify(`🎯 ONE thing: *${focus}*`);
   }
   // Anything else: the coach reads it in context and responds/updates state.
@@ -96,13 +113,13 @@ async function onText(text) {
   if (actions) {
     try { applyActions(JSON.parse(actions[1])); } catch (e) { console.error('bad actions', e); }
   }
-  await notify(reply.replace(/```json[\s\S]*?```/, '').trim(), { urgent: true });
+  await notify(`🧠 *Max*\n\n${reply.replace(/```json[\s\S]*?```/, '').trim()}`, { urgent: true });
 }
 
 // The brain may return {focus, done:[what], add:[{what,due}], trained:bool, shutdown:bool}.
 function applyActions(a) {
   update((s) => {
-    if (a.focus) s.focus = a.focus;
+    if (a.focus) { s.focus = a.focus; s.lockedOn = today(); }
     for (const w of a.done ?? []) for (const c of s.commitments) if (c.what === w) c.done = true;
     for (const c of a.add ?? []) s.commitments.push({ ...c, done: false, added: new Date().toISOString() });
     if (a.trained === true) s.streaks.workout += 1;
@@ -151,7 +168,7 @@ async function onCommand(name, arg) {
       return true;
     }
     case 'local': {
-      ollama(arg).then((t) => notify(`[local] ${t}`, { urgent: true, plain: true }), (e) => notify(`⚠️ ollama: ${e.message}`, { urgent: true }));
+      ollama(arg).then((t) => notify(`🦙 *Local*\n\n${t}`, { urgent: true }), (e) => notify(`⚠️ ollama: ${e.message}`, { urgent: true }));
       return true;
     }
     case 'queue': {
@@ -178,7 +195,7 @@ function talk(chat, prompt, keep) {
   claudeOn(chat.machine, { cwd: chat.cwd, prompt, sessionId: keep ? chat.sessionId : null })
     .then(({ text, sessionId }) => {
       if (keep) update((s) => { if (s.chat?.machine === chat.machine) s.chat.sessionId = sessionId; });
-      return notify(`[${chat.machine}] ${text}`, { urgent: true, plain: true });
+      return notify(`🤖 *${chat.machine}*\n\n${text}`, { urgent: true });
     })
     .catch((e) => {
       if (!(e instanceof OfflineError)) return notify(`⚠️ ${chat.machine}: ${e.message}`, { urgent: true, plain: true });

@@ -34,3 +34,14 @@ test('sleep window across midnight', () => {
   assert.equal(isQuiet(at(7, 0), w), false);
   assert.equal(isQuiet(at(14, 0), w), false);
 });
+
+test('md2html renders LLM markdown as Telegram HTML', async () => {
+  const { md2html } = await import('../lib/notify.js');
+  assert.equal(md2html('**x**'), '<b>x</b>');
+  assert.equal(md2html('*Max*'), '<b>Max</b>');
+  assert.equal(md2html('# Head'), '<b>Head</b>');
+  assert.equal(md2html('- a\n* b'), '• a\n• b');
+  assert.equal(md2html('1 < 2 & `a<b`'), '1 &lt; 2 &amp; <code>a&lt;b</code>');
+  assert.equal(md2html('snake_case _it_'), 'snake_case <i>it</i>');
+  assert.equal(md2html('```\n**raw**\n```'), '<pre>**raw**</pre>');
+});

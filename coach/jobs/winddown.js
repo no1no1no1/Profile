@@ -1,5 +1,5 @@
 import { notify } from '../lib/notify.js';
 
 export default async function winddown() {
-  await notify('🛏 22:30: screens down in 30. Protein in? Magnesium? Lights low. Agents can run overnight; you can\'t.');
+  await notify('😴 *Wind-down 22:30*\n• Protein in? Magnesium? Lights low.\n• Agents can run overnight; you can\'t.\n👉 Screens down in 30.');
 }

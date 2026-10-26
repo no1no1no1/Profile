@@ -14,7 +14,7 @@ export default async function commitments() {
     st.commitments.push(...fresh);
     return fresh;
   });
-  for (const c of added) await notify(`📌 Captured promise: *${c.what}*${c.to ? ` → ${c.to}` : ''}${c.due ? ` (due ${c.due})` : ''}`);
+  for (const c of added) await notify(`📌 *Promise captured*\n${c.what}${c.to ? ` → ${c.to}` : ''}${c.due ? `\n⏰ due ${c.due}` : ''}\n👉 Do it or renegotiate. Never drop it.`);
   const soon = load().commitments.filter((c) => !c.done && c.due && new Date(c.due) - Date.now() < 24 * 3600_000);
-  if (soon.length) await notify(`⚠️ Due within 24h:\n${soon.map((c) => `• ${c.what}`).join('\n')}`);
+  if (soon.length) await notify(`🚨 *Due in 24h*\n${soon.map((c) => `• 📌 ${c.what}`).join('\n')}\n👉 Knock out the first one now.`);
 }

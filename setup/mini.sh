@@ -12,7 +12,7 @@ command -v claude >/dev/null || npm install -g @anthropic-ai/claude-code
 brew install ollama
 brew services start ollama
 MEM_GB=$(( $(sysctl -n hw.memsize) / 1073741824 ))
-MODEL=$([ "$MEM_GB" -ge 24 ] && echo qwen3:14b || echo qwen3:8b)
+MODEL=$( [ "$MEM_GB" -ge 24 ] && echo qwen3:14b || { [ "$MEM_GB" -ge 16 ] && echo qwen3:8b || echo qwen3:4b; })
 ollama list | grep -q "^$MODEL" || ollama pull "$MODEL"
 
 # Never sleep, restart after power loss

@@ -9,3 +9,6 @@ export function isQuiet(d = new Date(), { start, end } = settings.sleep) {
   const t = hhmm(d);
   return start > end ? t >= start || t < end : t >= start && t < end;
 }
+
+// YYYY-MM-DD in the user's timezone.
+export const today = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: settings.tz });

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>solutions.novia.coach.checkin</string>
+  <key>ProgramArguments</key>
+  <array><string>/opt/homebrew/bin/node</string><string>__REPO__/coach/index.js</string><string>run</string><string>checkin</string></array>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>StartCalendarInterval</key><array><dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict><dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict></array>
+  <key>StandardOutPath</key><string>__HOME__/.coach/checkin.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/.coach/checkin.log</string>
+</dict>
+</plist>
