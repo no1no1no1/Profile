@@ -7,11 +7,11 @@ import { REPO, settings } from './config.js';
 //   claude: headless Claude Code with the account's connectors (Gmail, Calendar, GitHub)
 //   local:  Ollama, free and private, for frequent jobs that only need the context we pass in
 // If Claude fails, we fall back to Ollama with the same context and tag the answer.
-export async function think(promptName, context = {}, { tier = settings.tiers[promptName] ?? 'claude', timeoutMs = 240_000 } = {}) {
+export async function think(promptName, context = {}, { tier = settings.tiers[promptName] ?? 'claude', timeoutMs = 240_000, model } = {}) {
   const prompt = buildPrompt(promptName, context);
   if (tier === 'local') return ollama(prompt);
   try {
-    return await claude(prompt, timeoutMs);
+    return await claude(prompt, timeoutMs, model);
   } catch (e) {
     console.error(`claude failed, using local brain: ${e.message}`);
     return `${await ollama(prompt)}\n_(local brain)_`;
@@ -35,9 +35,9 @@ export async function ollama(prompt, { model = settings.ollamaModel } = {}) {
   return data.message.content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 }
 
-function claude(prompt, timeoutMs) {
+function claude(prompt, timeoutMs, model) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.env.CLAUDE_BIN || 'claude', ['-p', '--output-format', 'text'], { cwd: REPO });
+    const child = spawn(process.env.CLAUDE_BIN || 'claude', ['-p', '--output-format', 'text', ...(model ? ['--model', model] : [])], { cwd: REPO });
     let out = '';
     let err = '';
     const timer = setTimeout(() => child.kill('SIGTERM'), timeoutMs);

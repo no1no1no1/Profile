@@ -1,11 +1,13 @@
 import { think } from '../lib/brain.js';
 import { notify } from '../lib/notify.js';
 import { update, load } from '../lib/state.js';
+import { isQuiet } from '../lib/time.js';
 
 // Hourly: scan sent mail for promises ("I'll send...", "by Friday") and nudge on ones coming due.
 export default async function commitments() {
+  if (isQuiet()) return; // sent mail can wait until morning
   const s = load();
-  const raw = await think('commitments', { known: s.commitments, now: new Date().toISOString() });
+  const raw = await think('commitments', { known: s.commitments, now: new Date().toISOString() }, { model: 'haiku' });
   let found = [];
   try { found = JSON.parse(raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1)); } catch { return; }
   const added = update((st) => {
