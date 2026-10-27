@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
 # Called from Claude Code hooks; never blocks or fails the session.
+# turn-start (UserPromptSubmit) stamps the turn; agent-done (Stop) only pings if the turn ran >= COACH_MIN_TURN secs.
+dir="$HOME/.coach/turns"
+sid=$(sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+stamp="$dir/${sid:-unknown}"
+case "$1" in
+  turn-start) mkdir -p "$dir" && touch "$stamp"; exit 0 ;;
+  agent-done)
+    [ -f "$stamp" ] || exit 0
+    age=$(( $(date +%s) - $(stat -f %m "$stamp") ))
+    rm -f "$stamp"
+    [ "$age" -ge "${COACH_MIN_TURN:-180}" ] || exit 0 ;;
+esac
 node "$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)/coach/index.js" notify "$@" >/dev/null 2>&1 &
 exit 0

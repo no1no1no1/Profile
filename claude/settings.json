@@ -10,6 +10,9 @@
     ]
   },
   "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "~/bin/coach-notify turn-start" } ] }
+    ],
     "Stop": [
       { "hooks": [ { "type": "command", "command": "~/bin/coach-notify agent-done \"$PWD\"" } ] }
     ],
